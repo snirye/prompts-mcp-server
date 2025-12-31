@@ -46,13 +46,12 @@ export class PromptFileOperations {
 
   /**
    * Recursively search for a markdown file matching the name
-   * Handles names with underscores that represent subdirectory paths (e.g., "repo-name_prompt" -> "repo-name/prompt.md")
+   * Handles names with slashes that represent subdirectory paths (e.g., "repo-name/prompt" -> "repo-name/prompt.md")
    */
   private async findPromptFile(name: string): Promise<string | null> {
+    // First try direct path (for backward compatibility with sanitized names)
     const sanitizedName = this.sanitizeFileName(name);
     const targetFileName = sanitizedName + '.md';
-    
-    // First try direct path (for backward compatibility)
     const directPath = path.join(this.promptsDir, targetFileName);
     try {
       await fs.access(directPath);
@@ -79,18 +78,17 @@ export class PromptFileOperations {
             if (found) return found;
           } else if (entry.isFile() && entry.name.endsWith('.md')) {
             // Check if this file matches the requested name
-            // Compare the relative path (with / replaced by _) to the sanitized name
+            // Compare the relative path directly with the name
             const relativePath = path.relative(baseDir, fullPath);
             const pathWithoutExt = relativePath.replace(/\.md$/, '');
-            const normalizedPath = pathWithoutExt.replace(/\//g, '_');
             
-            // Try exact match first
-            if (entry.name === targetFileName) {
+            // Try exact match with the name (supports '/' in names)
+            if (pathWithoutExt === name) {
               return fullPath;
             }
             
-            // Try matching normalized path (handles subdirectory paths)
-            if (this.sanitizeFileName(normalizedPath) === sanitizedName) {
+            // Also try matching with sanitized name for backward compatibility
+            if (this.sanitizeFileName(pathWithoutExt) === sanitizedName) {
               return fullPath;
             }
           }

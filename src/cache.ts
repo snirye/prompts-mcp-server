@@ -88,7 +88,7 @@ export class PromptCache {
       
       // Use the file name (without extension) as the prompt name
       // For nested files, use the full relative path without .md extension
-      const name = fileName.replace(/\.md$/, '').replace(/\//g, '_');
+      const name = fileName.replace(/\.md$/, '');
       
       return {
         name,
@@ -138,7 +138,7 @@ export class PromptCache {
       relativePath = filePath;
     }
     
-    const name = relativePath.replace(/\.md$/, '').replace(/\//g, '_');
+    const name = relativePath.replace(/\.md$/, '');
     this.cache.delete(name);
   }
 
