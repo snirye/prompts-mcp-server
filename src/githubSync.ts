@@ -125,10 +125,10 @@ export class GitHubSync {
       // Ensure prompts directory exists
       await fs.mkdir(this.promptsDir, { recursive: true });
       
-      // Clone repository
-      // gh repo clone creates a subdirectory with the repo name
-      const cloneCommand = `gh repo clone ${fullName} ${this.promptsDir} -- --branch ${branch} --depth 1`;
-      await execAsync(cloneCommand);
+      // Clone repository without destination parameter
+      // gh repo clone creates a subdirectory with the repo name in the current directory
+      const cloneCommand = `gh repo clone ${fullName} -- --branch ${branch} --depth 1`;
+      await execAsync(cloneCommand, { cwd: this.promptsDir });
       console.error(`Successfully cloned repository ${repoUrl} into ${this.promptsDir}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
