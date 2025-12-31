@@ -46,6 +46,7 @@ export class PromptFileOperations {
 
   /**
    * Recursively search for a markdown file matching the name
+   * Handles names with underscores that represent subdirectory paths (e.g., "repo-name_prompt" -> "repo-name/prompt.md")
    */
   private async findPromptFile(name: string): Promise<string | null> {
     const sanitizedName = this.sanitizeFileName(name);
@@ -61,7 +62,7 @@ export class PromptFileOperations {
     }
     
     // Recursively search for the file
-    const searchDir = async (dir: string): Promise<string | null> => {
+    const searchDir = async (dir: string, baseDir: string = this.promptsDir): Promise<string | null> => {
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true });
         
@@ -74,10 +75,24 @@ export class PromptFileOperations {
           }
           
           if (entry.isDirectory()) {
-            const found = await searchDir(fullPath);
+            const found = await searchDir(fullPath, baseDir);
             if (found) return found;
-          } else if (entry.isFile() && entry.name === targetFileName) {
-            return fullPath;
+          } else if (entry.isFile() && entry.name.endsWith('.md')) {
+            // Check if this file matches the requested name
+            // Compare the relative path (with / replaced by _) to the sanitized name
+            const relativePath = path.relative(baseDir, fullPath);
+            const pathWithoutExt = relativePath.replace(/\.md$/, '');
+            const normalizedPath = pathWithoutExt.replace(/\//g, '_');
+            
+            // Try exact match first
+            if (entry.name === targetFileName) {
+              return fullPath;
+            }
+            
+            // Try matching normalized path (handles subdirectory paths)
+            if (this.sanitizeFileName(normalizedPath) === sanitizedName) {
+              return fullPath;
+            }
           }
         }
       } catch {
