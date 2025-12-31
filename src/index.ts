@@ -16,6 +16,7 @@ import { PromptCache } from './cache.js';
 import { PromptFileOperations } from './fileOperations.js';
 import { PromptTools } from './tools.js';
 import { ServerConfig } from './types.js';
+import { GitHubSync } from './githubSync.js';
 
 // Server configuration
 const __filename = fileURLToPath(import.meta.url);
@@ -64,6 +65,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
  */
 async function main(): Promise<void> {
   try {
+    // Sync from GitHub if configured (before cache initialization)
+    const githubSync = new GitHubSync(config.promptsDir);
+    await githubSync.syncFromGitHub();
+    
     // Initialize cache and file watcher on startup
     await cache.initializeCache();
     cache.initializeFileWatcher();

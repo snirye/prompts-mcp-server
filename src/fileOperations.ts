@@ -45,11 +45,61 @@ export class PromptFileOperations {
   }
 
   /**
-   * Read a specific prompt by name
+   * Recursively search for a markdown file matching the name
+   */
+  private async findPromptFile(name: string): Promise<string | null> {
+    const sanitizedName = this.sanitizeFileName(name);
+    const targetFileName = sanitizedName + '.md';
+    
+    // First try direct path (for backward compatibility)
+    const directPath = path.join(this.promptsDir, targetFileName);
+    try {
+      await fs.access(directPath);
+      return directPath;
+    } catch {
+      // Not found at root, search recursively
+    }
+    
+    // Recursively search for the file
+    const searchDir = async (dir: string): Promise<string | null> => {
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          
+          // Skip hidden files and directories
+          if (entry.name.startsWith('.')) {
+            continue;
+          }
+          
+          if (entry.isDirectory()) {
+            const found = await searchDir(fullPath);
+            if (found) return found;
+          } else if (entry.isFile() && entry.name === targetFileName) {
+            return fullPath;
+          }
+        }
+      } catch {
+        // Ignore errors (permissions, etc.)
+      }
+      
+      return null;
+    };
+    
+    return await searchDir(this.promptsDir);
+  }
+
+  /**
+   * Read a specific prompt by name (searches recursively)
    */
   async readPrompt(name: string): Promise<string> {
-    const fileName = this.sanitizeFileName(name) + '.md';
-    const filePath = path.join(this.promptsDir, fileName);
+    const filePath = await this.findPromptFile(name);
+    
+    if (!filePath) {
+      throw new Error(`Prompt "${name}" not found`);
+    }
+    
     try {
       return await fs.readFile(filePath, 'utf-8');
     } catch (error) {

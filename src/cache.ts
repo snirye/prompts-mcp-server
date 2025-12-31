@@ -44,14 +44,51 @@ export class PromptCache {
   }
 
   /**
+   * Recursively find all markdown files in a directory
+   */
+  private async findMarkdownFiles(dir: string, baseDir: string = dir): Promise<string[]> {
+    const mdFiles: string[] = [];
+    
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        const relativePath = path.relative(baseDir, fullPath);
+        
+        // Skip hidden files and directories (like .git)
+        if (entry.name.startsWith('.')) {
+          continue;
+        }
+        
+        if (entry.isDirectory()) {
+          // Recursively search subdirectories
+          const subFiles = await this.findMarkdownFiles(fullPath, baseDir);
+          mdFiles.push(...subFiles);
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          mdFiles.push(relativePath);
+        }
+      }
+    } catch (error) {
+      // Ignore errors reading directories (permissions, etc.)
+    }
+    
+    return mdFiles;
+  }
+
+  /**
    * Load prompt metadata from a file
+   * fileName can be a relative path from promptsDir (e.g., "repo-name/prompt.md" or "prompt.md")
    */
   private async loadPromptMetadata(fileName: string): Promise<PromptInfo | null> {
     const filePath = path.join(this.promptsDir, fileName);
     try {
       const content = await fs.readFile(filePath, 'utf-8');
       const parsed = matter(content);
-      const name = fileName.replace('.md', '');
+      
+      // Use the file name (without extension) as the prompt name
+      // For nested files, use the full relative path without .md extension
+      const name = fileName.replace(/\.md$/, '').replace(/\//g, '_');
       
       return {
         name,
@@ -67,11 +104,20 @@ export class PromptCache {
 
   /**
    * Update cache for a specific file
+   * filePath can be an absolute path or relative path from promptsDir
    */
-  private async updateCacheForFile(fileName: string): Promise<void> {
-    if (!fileName.endsWith('.md')) return;
+  private async updateCacheForFile(filePath: string): Promise<void> {
+    if (!filePath.endsWith('.md')) return;
     
-    const metadata = await this.loadPromptMetadata(fileName);
+    // Convert absolute path to relative path if needed
+    let relativePath: string;
+    if (path.isAbsolute(filePath)) {
+      relativePath = path.relative(this.promptsDir, filePath);
+    } else {
+      relativePath = filePath;
+    }
+    
+    const metadata = await this.loadPromptMetadata(relativePath);
     if (metadata) {
       this.cache.set(metadata.name, metadata);
     }
@@ -79,11 +125,20 @@ export class PromptCache {
 
   /**
    * Remove a file from cache
+   * filePath can be an absolute path or relative path from promptsDir
    */
-  private async removeFromCache(fileName: string): Promise<void> {
-    if (!fileName.endsWith('.md')) return;
+  private async removeFromCache(filePath: string): Promise<void> {
+    if (!filePath.endsWith('.md')) return;
     
-    const name = fileName.replace('.md', '');
+    // Convert absolute path to relative path if needed
+    let relativePath: string;
+    if (path.isAbsolute(filePath)) {
+      relativePath = path.relative(this.promptsDir, filePath);
+    } else {
+      relativePath = filePath;
+    }
+    
+    const name = relativePath.replace(/\.md$/, '').replace(/\//g, '_');
     this.cache.delete(name);
   }
 
@@ -99,14 +154,14 @@ export class PromptCache {
   }
 
   /**
-   * Initialize cache by loading all prompt files
+   * Initialize cache by loading all prompt files recursively
    */
   async initializeCache(): Promise<void> {
     await this.ensurePromptsDir();
     
     try {
-      const files = await fs.readdir(this.promptsDir);
-      const mdFiles = files.filter(file => file.endsWith('.md'));
+      // Recursively find all markdown files
+      const mdFiles = await this.findMarkdownFiles(this.promptsDir);
       
       // Clear existing cache
       this.cache.clear();
@@ -126,12 +181,13 @@ export class PromptCache {
   }
 
   /**
-   * Initialize file watcher to monitor changes
+   * Initialize file watcher to monitor changes recursively
    */
   initializeFileWatcher(): void {
     if (this.isWatcherInitialized) return;
     
-    this.watcher = chokidar.watch(path.join(this.promptsDir, '*.md'), {
+    // Watch all .md files recursively
+    this.watcher = chokidar.watch(path.join(this.promptsDir, '**/*.md'), {
       ignored: /^\./, // ignore dotfiles
       persistent: true,
       ignoreInitial: true // don't fire events for initial scan
@@ -139,26 +195,26 @@ export class PromptCache {
 
     this.watcher
       .on('add', async (filePath: string) => {
-        const fileName = path.basename(filePath);
-        console.error(`Prompt added: ${fileName}`);
-        await this.updateCacheForFile(fileName);
+        const relativePath = path.relative(this.promptsDir, filePath);
+        console.error(`Prompt added: ${relativePath}`);
+        await this.updateCacheForFile(filePath);
       })
       .on('change', async (filePath: string) => {
-        const fileName = path.basename(filePath);
-        console.error(`Prompt updated: ${fileName}`);
-        await this.updateCacheForFile(fileName);
+        const relativePath = path.relative(this.promptsDir, filePath);
+        console.error(`Prompt updated: ${relativePath}`);
+        await this.updateCacheForFile(filePath);
       })
       .on('unlink', async (filePath: string) => {
-        const fileName = path.basename(filePath);
-        console.error(`Prompt deleted: ${fileName}`);
-        await this.removeFromCache(fileName);
+        const relativePath = path.relative(this.promptsDir, filePath);
+        console.error(`Prompt deleted: ${relativePath}`);
+        await this.removeFromCache(filePath);
       })
       .on('error', (error: Error) => {
         console.error('File watcher error:', error);
       });
 
     this.isWatcherInitialized = true;
-    console.error('File watcher initialized for prompts directory');
+    console.error('File watcher initialized for prompts directory (recursive)');
   }
 
   /**

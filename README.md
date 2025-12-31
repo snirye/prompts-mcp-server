@@ -31,8 +31,10 @@ npm install -g prompts-mcp-server
 - **Retrieve Prompts**: Get specific prompts by name
 - **List Prompts**: View all available prompts with metadata preview
 - **Delete Prompts**: Remove prompts from the collection
+- **GitHub Import**: Automatically import prompts from GitHub repositories on startup
 - **File-based Storage**: Prompts are stored as markdown files in the `prompts/` directory
 - **Real-time Caching**: In-memory cache with automatic file change monitoring
+- **Recursive Discovery**: Automatically finds prompts in subdirectories
 - **YAML Frontmatter**: Support for structured metadata (title, description, tags, etc.)
 - **TypeScript**: Full TypeScript implementation with comprehensive type definitions
 - **Modular Architecture**: Clean separation of concerns with dependency injection
@@ -386,12 +388,84 @@ services:
 - Prompt files are automatically sanitized to use safe filenames (alphanumeric characters, hyphens, and underscores only)
 - File changes are monitored in real-time and cache is updated automatically
 - Prompts directory can be customized via the `PROMPTS_FOLDER_PATH` environment variable
+- Prompts are discovered recursively from all subdirectories
+
+## GitHub Import
+
+The server can automatically import prompts from a GitHub repository on startup. This is useful for:
+- Sharing prompt collections across teams
+- Keeping prompts synchronized with a central repository
+- Using community-maintained prompt libraries
+
+### Setup
+
+1. **Install GitHub CLI**: Download and install from [cli.github.com](https://cli.github.com)
+
+2. **Authenticate**: Run `gh auth login` to authenticate with GitHub (required for private repos, optional for public repos)
+
+3. **Configure**: Set the `GITHUB_REPO_URL` environment variable in your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "prompts-mcp-server": {
+      "command": "prompts-mcp-server",
+      "env": {
+        "PROMPTS_FOLDER_PATH": "/path/to/prompts",
+        "GITHUB_REPO_URL": "user/repo-name",
+        "GITHUB_REPO_REF": "main"
+      }
+    }
+  }
+}
+```
+
+### How It Works
+
+- On server startup, if `GITHUB_REPO_URL` is set, the server will:
+  1. Check if the repository folder already exists in `PROMPTS_FOLDER_PATH`
+  2. If it exists: Run `git pull` to get the latest changes
+  3. If it doesn't exist: Clone the repository using `gh repo clone`
+- The repository is cloned into `PROMPTS_FOLDER_PATH/<repo-name>/`
+- All `.md` files are discovered recursively, including those in subdirectories
+- The cache automatically picks up all prompts from the cloned repository
+
+### Example Structure
+
+After cloning `user/my-prompts` into `/path/to/prompts`:
+
+```
+/path/to/prompts/
+  my-prompts/          (repo name)
+    prompt1.md
+    subfolder/
+      prompt2.md
+    another-folder/
+      prompt3.md
+```
+
+All prompts (`prompt1`, `subfolder_prompt2`, `another-folder_prompt3`) will be available via the MCP tools.
+
+### Supported Repository Formats
+
+- Public repositories: Works automatically after installing GitHub CLI
+- Private repositories: Requires authentication via `gh auth login`
+- Any branch/tag/commit: Use `GITHUB_REPO_REF` to specify (defaults to `main`)
+
+### URL Formats
+
+The `GITHUB_REPO_URL` accepts multiple formats:
+- `user/repo-name`
+- `https://github.com/user/repo-name`
+- `github.com/user/repo-name`
 
 ### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PROMPTS_FOLDER_PATH` | Custom directory to store prompt files (overrides default) | (not set) |
+| `GITHUB_REPO_URL` | GitHub repository URL to import prompts from (e.g., `https://github.com/user/repo` or `user/repo`) | (not set) |
+| `GITHUB_REPO_REF` | Branch, tag, or commit SHA to use when cloning/pulling (optional) | `main` |
 | `NODE_ENV` | Environment mode | `production` |
 
 > **Note**: If `PROMPTS_FOLDER_PATH` is set, it will be used as the prompts directory. If not set, the server defaults to `./prompts` relative to the server location.
@@ -400,6 +474,7 @@ services:
 
 - Node.js 18.0.0 or higher
 - TypeScript 5.0.0 or higher
+- GitHub CLI (`gh`) - Required if using GitHub import feature (install from [cli.github.com](https://cli.github.com))
 - Dependencies:
   - @modelcontextprotocol/sdk ^1.0.0
   - gray-matter ^4.0.3 (YAML frontmatter parsing)
