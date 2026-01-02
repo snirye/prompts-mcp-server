@@ -7,8 +7,6 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
@@ -16,7 +14,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { PromptCache } from './cache.js';
 import { PromptFileOperations } from './fileOperations.js';
-import { PromptTools } from './tools.js';
 import { PromptHandlers } from './prompts.js';
 import { ServerConfig } from './types.js';
 import { GitHubSync } from './githubSync.js';
@@ -39,7 +36,6 @@ const config: ServerConfig = {
 // Initialize components
 const cache = new PromptCache(config.promptsDir);
 const fileOps = new PromptFileOperations(config.promptsDir, cache);
-const tools = new PromptTools(fileOps);
 const promptHandlers = new PromptHandlers(fileOps);
 
 // Create MCP server
@@ -50,20 +46,10 @@ const server = new Server(
   },
   {
     capabilities: {
-      tools: {},
       prompts: {},
     },
   }
 );
-
-// Register tool handlers
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return tools.getToolDefinitions();
-});
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  return await tools.handleToolCall(request);
-});
 
 // Register prompt handlers
 server.setRequestHandler(ListPromptsRequestSchema, async () => {

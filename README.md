@@ -1,6 +1,6 @@
 # Prompts MCP Server
 
-A Model Context Protocol (MCP) server for managing and providing prompts. This server allows users and LLMs to easily add, retrieve, and manage prompt templates stored as markdown files with YAML frontmatter support.
+A Model Context Protocol (MCP) server for providing prompts. This server serves prompt templates stored as markdown files with YAML frontmatter support via the MCP prompts protocol.
 
 <a href="https://glama.ai/mcp/servers/@tanker327/prompts-mcp-server">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@tanker327/prompts-mcp-server/badge" alt="Prompts Server MCP server" />
@@ -22,15 +22,14 @@ npm install -g prompts-mcp-server
   }
 }
 
-# 3. Restart your MCP client and start using the tools!
+# 3. Restart your MCP client and start using the prompts!
 ```
 
 ## Features
 
-- **Add Prompts**: Store new prompts as markdown files with YAML frontmatter
+- **Serve Prompts**: Provide prompts via the MCP prompts protocol
 - **Retrieve Prompts**: Get specific prompts by name
 - **List Prompts**: View all available prompts with metadata preview
-- **Delete Prompts**: Remove prompts from the collection
 - **GitHub Import**: Automatically import prompts from GitHub repositories on startup
 - **File-based Storage**: Prompts are stored as markdown files in the `prompts/` directory
 - **Real-time Caching**: In-memory cache with automatic file change monitoring
@@ -38,7 +37,7 @@ npm install -g prompts-mcp-server
 - **YAML Frontmatter**: Support for structured metadata (title, description, tags, etc.)
 - **TypeScript**: Full TypeScript implementation with comprehensive type definitions
 - **Modular Architecture**: Clean separation of concerns with dependency injection
-- **Comprehensive Testing**: 95 tests with 84.53% code coverage
+- **Comprehensive Testing**: Test suite with good code coverage
 
 ## Installation
 
@@ -104,108 +103,26 @@ Watch mode for development:
 npm run test:watch
 ```
 
-## MCP Tools
+## MCP Prompts Protocol
 
-The server provides the following tools:
+This server implements the MCP prompts protocol, which allows MCP clients to:
 
-### `add_prompt`
-Add a new prompt to the collection. If no YAML frontmatter is provided, default metadata will be automatically added.
-- **name** (string): Name of the prompt
-- **content** (string): Content of the prompt in markdown format with optional YAML frontmatter
+- **List Prompts**: Get all available prompts with their metadata
+- **Get Prompt**: Retrieve a specific prompt by name, with optional argument substitution
 
-### `create_structured_prompt`
-Create a new prompt with guided metadata structure and validation.
-- **name** (string): Name of the prompt
-- **title** (string): Human-readable title for the prompt
-- **description** (string): Brief description of what the prompt does
-- **category** (string, optional): Category (defaults to "general")
-- **tags** (array, optional): Array of tags for categorization (defaults to ["general"])
-- **difficulty** (string, optional): "beginner", "intermediate", or "advanced" (defaults to "beginner")
-- **author** (string, optional): Author of the prompt (defaults to "User")
-- **content** (string): The actual prompt content (markdown)
+Prompts are served directly from markdown files in the `prompts/` directory. The server automatically discovers all `.md` files recursively, including those in subdirectories.
 
-### `get_prompt` 
-Retrieve a prompt by name.
-- **name** (string): Name of the prompt to retrieve
+### Prompt Naming
 
-### `list_prompts`
-List all available prompts with metadata preview. No parameters required.
+Prompt names are derived from the file path relative to the `prompts/` directory:
+- `prompts/code_review.md` → prompt name: `code_review`
+- `prompts/repo-name/prompt.md` → prompt name: `repo-name/prompt`
+- `prompts/subdir/nested/prompt.md` → prompt name: `subdir/nested/prompt`
 
-### `delete_prompt`
-Delete a prompt by name.
-- **name** (string): Name of the prompt to delete
+### Argument Substitution
 
-## Usage Examples
-
-Once connected to an MCP client, you can use the tools like this:
-
-### Method 1: Quick prompt creation with automatic metadata
-```javascript
-// Add a prompt without frontmatter - metadata will be added automatically
-add_prompt({
-  name: "debug_helper",
-  content: `# Debug Helper
-
-Help me debug this issue by:
-1. Analyzing the error message
-2. Suggesting potential causes
-3. Recommending debugging steps`
-})
-// This automatically adds default frontmatter with title "Debug Helper", category "general", etc.
-```
-
-### Method 2: Structured prompt creation with full metadata control
-```javascript
-// Create a prompt with explicit metadata using the structured tool
-create_structured_prompt({
-  name: "code_review",
-  title: "Code Review Assistant",
-  description: "Helps review code for best practices and potential issues",
-  category: "development",
-  tags: ["code", "review", "quality"],
-  difficulty: "intermediate",
-  author: "Development Team",
-  content: `# Code Review Prompt
-
-Please review the following code for:
-- Code quality and best practices
-- Potential bugs or issues
-- Performance considerations
-- Security vulnerabilities
-
-## Code to Review
-[Insert code here]`
-})
-```
-
-### Method 3: Manual frontmatter (preserves existing metadata)
-```javascript
-// Add a prompt with existing frontmatter - no changes made
-add_prompt({
-  name: "custom_prompt",
-  content: `---
-title: "Custom Assistant"
-category: "specialized"
-tags: ["custom", "specific"]
-difficulty: "advanced"
----
-
-# Custom Prompt Content
-Your specific prompt here...`
-})
-```
-
-### Other operations
-```javascript
-// Get a prompt
-get_prompt({ name: "code_review" })
-
-// List all prompts (shows metadata preview)
-list_prompts({})
-
-// Delete a prompt
-delete_prompt({ name: "old_prompt" })
-```
+When getting a prompt, you can provide arguments that will be substituted in the prompt content:
+- `{{key}}` or `{key}` patterns in the prompt content will be replaced with the provided argument value
 
 ## File Structure
 
@@ -216,14 +133,14 @@ prompts-mcp-server/
 │   ├── types.ts          # TypeScript type definitions
 │   ├── cache.ts          # Caching system with file watching
 │   ├── fileOperations.ts # File I/O operations
-│   └── tools.ts          # MCP tool definitions and handlers
+│   ├── prompts.ts        # MCP prompts protocol handlers
+│   └── githubSync.ts     # GitHub repository synchronization
 ├── tests/
 │   ├── helpers/
 │   │   ├── testUtils.ts  # Test utilities
 │   │   └── mocks.ts      # Mock implementations
 │   ├── cache.test.ts     # Cache module tests
 │   ├── fileOperations.test.ts # File operations tests
-│   ├── tools.test.ts     # Tools module tests
 │   └── index.test.ts     # Integration tests
 ├── prompts/              # Directory for storing prompt markdown files
 │   ├── code_review.md
@@ -242,7 +159,8 @@ The server uses a modular architecture with the following components:
 
 - **PromptCache**: In-memory caching with real-time file change monitoring via chokidar
 - **PromptFileOperations**: File I/O operations with cache integration
-- **PromptTools**: MCP tool definitions and request handlers
+- **PromptHandlers**: MCP prompts protocol request handlers
+- **GitHubSync**: GitHub repository synchronization for importing prompts
 - **Type System**: Comprehensive TypeScript types for all data structures
 
 ## YAML Frontmatter Support
@@ -444,7 +362,7 @@ After cloning `user/my-prompts` into `/path/to/prompts`:
       prompt3.md
 ```
 
-All prompts (`prompt1`, `subfolder_prompt2`, `another-folder_prompt3`) will be available via the MCP tools.
+All prompts (`prompt1`, `subfolder/prompt2`, `another-folder/prompt3`) will be available via the MCP prompts protocol.
 
 ### Supported Repository Formats
 

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { PromptMetadata, PromptInfo, ToolArguments, ServerConfig } from '../src/types.js';
+import type { PromptMetadata, PromptInfo, ServerConfig } from '../src/types.js';
 
 describe('Types', () => {
   describe('PromptMetadata', () => {
@@ -90,27 +90,6 @@ describe('Types', () => {
     });
   });
 
-  describe('ToolArguments', () => {
-    it('should require name field', () => {
-      const args: ToolArguments = {
-        name: 'test-prompt'
-      };
-
-      expect(args.name).toBe('test-prompt');
-      expect(args.content).toBeUndefined();
-    });
-
-    it('should allow optional content field', () => {
-      const args: ToolArguments = {
-        name: 'test-prompt',
-        content: 'Test content for the prompt'
-      };
-
-      expect(args.name).toBe('test-prompt');
-      expect(args.content).toBe('Test content for the prompt');
-    });
-  });
-
   describe('ServerConfig', () => {
     it('should require all fields', () => {
       const config: ServerConfig = {
@@ -170,15 +149,9 @@ describe('Types', () => {
         preview: 'You are an experienced software engineer performing a code review...'
       };
 
-      const toolArgs: ToolArguments = {
-        name: promptInfo.name,
-        content: '# Code Review Prompt\n\nYou are an experienced software engineer...'
-      };
-
       expect(config.name).toBe('prompts-mcp-server');
       expect(promptInfo.metadata.difficulty).toBe('intermediate');
-      expect(toolArgs.name).toBe('code-review');
-      expect(toolArgs.content).toContain('Code Review Prompt');
+      expect(promptInfo.name).toBe('code-review');
     });
   });
 });

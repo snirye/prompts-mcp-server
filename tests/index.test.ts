@@ -97,11 +97,10 @@ describe('Main Server Integration', () => {
   });
 
   describe('component integration', () => {
-    it('should integrate cache, file operations, and tools correctly', async () => {
+    it('should integrate cache and file operations correctly', async () => {
       // Test the integration by using the actual classes
       const { PromptCache } = await import('../src/cache.js');
       const { PromptFileOperations } = await import('../src/fileOperations.js');
-      const { PromptTools } = await import('../src/tools.js');
 
       // Create test files
       await createTestPromptFile(tempDir, 'integration-test', 
@@ -112,7 +111,6 @@ describe('Main Server Integration', () => {
       // Initialize components
       const cache = new PromptCache(tempDir);
       const fileOps = new PromptFileOperations(tempDir, cache);
-      const tools = new PromptTools(fileOps);
 
       // Test integration flow
       await cache.initializeCache();
@@ -126,109 +124,7 @@ describe('Main Server Integration', () => {
       expect(prompts).toHaveLength(1);
       expect(prompts[0].name).toBe('integration-test');
 
-      // Test tools
-      const toolDefinitions = tools.getToolDefinitions();
-      expect(toolDefinitions.tools).toHaveLength(5);
-
       // Cleanup
-      await cache.cleanup();
-    });
-
-    it('should handle end-to-end prompt management workflow', async () => {
-      const { PromptCache } = await import('../src/cache.js');
-      const { PromptFileOperations } = await import('../src/fileOperations.js');
-      const { PromptTools } = await import('../src/tools.js');
-
-      const cache = new PromptCache(tempDir);
-      const fileOps = new PromptFileOperations(tempDir, cache);
-      const tools = new PromptTools(fileOps);
-
-      await cache.initializeCache();
-
-      // 1. Add a prompt via tools
-      const addRequest = {
-        params: {
-          name: 'add_prompt',
-          arguments: {
-            name: 'e2e-test',
-            filename: 'e2e_test',
-            content: '---\ntitle: "E2E Test"\ncategory: "testing"\n---\n\n# E2E Test Prompt\n\nThis is an end-to-end test.'
-          }
-        }
-      };
-
-      const addResult = await tools.handleToolCall(addRequest as any);
-      expect(addResult.content[0].text).toContain('saved as e2e_test.md');
-
-      // 2. List prompts should show the new prompt
-      const listRequest = { params: { name: 'list_prompts', arguments: {} } };
-      const listResult = await tools.handleToolCall(listRequest as any);
-      expect(listResult.content[0].text).toContain('e2e_test');
-      expect(listResult.content[0].text).toContain('E2E Test');
-
-      // 3. Get the specific prompt
-      const getRequest = {
-        params: {
-          name: 'get_prompt',
-          arguments: { name: 'e2e_test' }
-        }
-      };
-      const getResult = await tools.handleToolCall(getRequest as any);
-      expect(getResult.content[0].text).toContain('E2E Test Prompt');
-
-      // 4. Verify prompt exists in cache
-      expect(cache.getPrompt('e2e_test')?.metadata.title).toBe('E2E Test');
-      expect(cache.getPrompt('e2e_test')?.metadata.category).toBe('testing');
-
-      // 5. Delete the prompt
-      const deleteRequest = {
-        params: {
-          name: 'delete_prompt',
-          arguments: { name: 'e2e_test' }
-        }
-      };
-      const deleteResult = await tools.handleToolCall(deleteRequest as any);
-      expect(deleteResult.content[0].text).toContain('deleted successfully');
-
-      // 6. Verify prompt is no longer accessible
-      const getDeletedRequest = {
-        params: {
-          name: 'get_prompt',
-          arguments: { name: 'e2e_test' }
-        }
-      };
-      const getDeletedResult = await tools.handleToolCall(getDeletedRequest as any);
-      expect(getDeletedResult.isError).toBe(true);
-      expect(getDeletedResult.content[0].text).toContain('not found');
-
-      await cache.cleanup();
-    });
-  });
-
-  describe('error handling integration', () => {
-    it('should handle errors across component boundaries', async () => {
-      const { PromptCache } = await import('../src/cache.js');
-      const { PromptFileOperations } = await import('../src/fileOperations.js');
-      const { PromptTools } = await import('../src/tools.js');
-
-      // Use a non-existent directory to trigger errors
-      const badDir = '/non/existent/directory';
-      const cache = new PromptCache(badDir);
-      const fileOps = new PromptFileOperations(badDir, cache);
-      const tools = new PromptTools(fileOps);
-
-      // Try to get a prompt from non-existent directory
-      const getRequest = {
-        params: {
-          name: 'get_prompt',
-          arguments: { name: 'any-prompt' }
-        }
-      };
-
-      const result = await tools.handleToolCall(getRequest as any);
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Error:');
-
       await cache.cleanup();
     });
   });

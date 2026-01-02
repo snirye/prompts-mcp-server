@@ -26,7 +26,7 @@ This is an MCP (Model Context Protocol) server written in TypeScript that manage
 
 **Type Definitions (`src/types.ts`)**
 - Central location for all TypeScript interfaces
-- `PromptMetadata`, `PromptInfo`, `ToolArguments`, `ServerConfig`
+- `PromptMetadata`, `PromptInfo`, `ServerConfig`
 - Ensures type consistency across all modules
 
 **Caching System (`src/cache.ts`)**
@@ -37,14 +37,14 @@ This is an MCP (Model Context Protocol) server written in TypeScript that manage
 
 **File Operations (`src/fileOperations.ts`)**
 - `PromptFileOperations` class handles all file I/O
-- CRUD operations: create, read, update, delete prompts
+- Read operations for prompts
 - Filename sanitization and directory management
 - Integrates with cache for optimal performance
 
-**MCP Tools (`src/tools.ts`)**
-- `PromptTools` class implements MCP tool definitions and handlers
-- Handles all 4 MCP tools: `add_prompt`, `get_prompt`, `list_prompts`, `delete_prompt`
-- Tool validation, execution, and response formatting
+**MCP Prompts (`src/prompts.ts`)**
+- `PromptHandlers` class implements MCP prompts protocol handlers
+- Handles `prompts/list` and `prompts/get` requests
+- Argument substitution in prompt content
 - Clean separation between MCP protocol and business logic
 
 ### Module Dependencies
@@ -54,7 +54,7 @@ index.ts (main)
 ├── cache.ts (PromptCache)
 ├── fileOperations.ts (PromptFileOperations)
 │   └── cache.ts (dependency)
-├── tools.ts (PromptTools)
+├── prompts.ts (PromptHandlers)
 │   └── fileOperations.ts (dependency)
 └── types.ts (shared interfaces)
 ```
@@ -63,8 +63,8 @@ index.ts (main)
 
 1. **Startup**: Main orchestrates cache initialization and file watcher setup
 2. **File Changes**: PromptCache detects changes and updates cache automatically  
-3. **MCP Requests**: PromptTools delegates to PromptFileOperations which uses cached data
-4. **File Operations**: PromptFileOperations writes to filesystem, cache auto-updates via watcher
+3. **MCP Requests**: PromptHandlers delegates to PromptFileOperations which uses cached data
+4. **File Operations**: PromptFileOperations reads from filesystem, cache provides fast access
 
 ### Testing Strategy
 
@@ -76,7 +76,7 @@ Modular design enables easy unit testing:
 
 ## Key Implementation Details
 
-- **Modular Architecture**: Clean separation of concerns across 5 focused modules
+- **Modular Architecture**: Clean separation of concerns across focused modules
 - **TypeScript**: Full type safety with centralized type definitions
 - **Build Process**: TypeScript compiles to `dist/` directory, source in `src/`
 - **Development**: Uses `tsx` for hot-reload during development
@@ -92,7 +92,7 @@ Modular design enables easy unit testing:
 - **`types.ts`**: Shared interfaces and type definitions
 - **`cache.ts`**: In-memory caching with file watching (PromptCache class)
 - **`fileOperations.ts`**: File I/O operations (PromptFileOperations class)  
-- **`tools.ts`**: MCP tool definitions and handlers (PromptTools class)
+- **`prompts.ts`**: MCP prompts protocol handlers (PromptHandlers class)
 - **`index.ts`**: Main orchestration and server setup
 
 Each module is independently testable and has a single responsibility.
@@ -110,7 +110,6 @@ tests/
 ├── types.test.ts       # Type definition tests
 ├── cache.test.ts       # PromptCache class tests
 ├── fileOperations.test.ts  # PromptFileOperations class tests
-├── tools.test.ts       # PromptTools class tests
 └── index.test.ts       # Integration tests
 ```
 
@@ -119,7 +118,7 @@ tests/
 - **Integration Tests**: End-to-end workflows and component interactions
 - **Error Handling**: Comprehensive error scenarios and edge cases
 - **File System**: Real file operations and mock scenarios
-- **MCP Protocol**: Tool definitions and request/response handling
+- **MCP Protocol**: Prompts protocol request/response handling
 
 ### Testing Approach
 - **Mocking**: Uses Vitest mocking for external dependencies
@@ -129,8 +128,8 @@ tests/
 - **Type Safety**: Validates TypeScript interfaces and type constraints
 
 ### Test Results
-- **95 tests** across all modules with **100% pass rate**
-- **84.53% overall coverage** with critical modules at 98-100% coverage
+- Comprehensive test suite across all modules with **100% pass rate**
+- Good code coverage with critical modules well tested
 - **Fast execution** with proper test isolation and cleanup
 
 ## Development Workflow
@@ -149,7 +148,8 @@ prompts-mcp/
 │   ├── types.ts           # Type definitions
 │   ├── cache.ts           # Caching system
 │   ├── fileOperations.ts  # File I/O operations
-│   ├── tools.ts           # MCP tool handlers
+│   ├── prompts.ts         # MCP prompts protocol handlers
+│   ├── githubSync.ts      # GitHub repository synchronization
 │   └── index.ts           # Main server entry point
 ├── tests/                 # Comprehensive test suite
 │   ├── helpers/           # Test utilities and mocks

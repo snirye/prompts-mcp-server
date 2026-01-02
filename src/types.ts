@@ -19,19 +19,6 @@ export interface PromptInfo {
   preview: string;
 }
 
-export interface ToolArguments {
-  name?: string;
-  filename?: string;
-  content?: string;
-  // Fields for create_structured_prompt
-  title?: string;
-  description?: string;
-  category?: string;
-  tags?: string[];
-  difficulty?: 'beginner' | 'intermediate' | 'advanced';
-  author?: string;
-}
-
 export interface ServerConfig {
   name: string;
   version: string;
