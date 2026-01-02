@@ -27,14 +27,15 @@ npm install -g prompts-mcp-server
 
 ## Features
 
-- **Serve Prompts**: Provide prompts via the MCP prompts protocol
-- **Retrieve Prompts**: Get specific prompts by name
+- **MCP Prompts Protocol**: Serves prompts via the standard MCP prompts protocol
 - **List Prompts**: View all available prompts with metadata preview
+- **Get Prompts**: Retrieve specific prompts by name with argument substitution
 - **GitHub Import**: Automatically import prompts from GitHub repositories on startup
 - **File-based Storage**: Prompts are stored as markdown files in the `prompts/` directory
 - **Real-time Caching**: In-memory cache with automatic file change monitoring
 - **Recursive Discovery**: Automatically finds prompts in subdirectories
 - **YAML Frontmatter**: Support for structured metadata (title, description, tags, etc.)
+- **Argument Substitution**: Replace placeholders in prompts with dynamic values
 - **TypeScript**: Full TypeScript implementation with comprehensive type definitions
 - **Modular Architecture**: Clean separation of concerns with dependency injection
 - **Comprehensive Testing**: Test suite with good code coverage
@@ -132,7 +133,7 @@ prompts-mcp-server/
 │   ├── index.ts          # Main server orchestration
 │   ├── types.ts          # TypeScript type definitions
 │   ├── cache.ts          # Caching system with file watching
-│   ├── fileOperations.ts # File I/O operations
+│   ├── fileOperations.ts # File read operations
 │   ├── prompts.ts        # MCP prompts protocol handlers
 │   └── githubSync.ts     # GitHub repository synchronization
 ├── tests/
@@ -158,10 +159,12 @@ prompts-mcp-server/
 The server uses a modular architecture with the following components:
 
 - **PromptCache**: In-memory caching with real-time file change monitoring via chokidar
-- **PromptFileOperations**: File I/O operations with cache integration
-- **PromptHandlers**: MCP prompts protocol request handlers
+- **PromptFileOperations**: File read operations with cache integration
+- **PromptHandlers**: MCP prompts protocol request handlers (list/get)
 - **GitHubSync**: GitHub repository synchronization for importing prompts
 - **Type System**: Comprehensive TypeScript types for all data structures
+
+This is a **read-only** server that serves prompts via the MCP prompts protocol. Prompts are managed as markdown files in the filesystem.
 
 ## YAML Frontmatter Support
 
@@ -303,10 +306,10 @@ services:
 ## Server Configuration
 
 - The server automatically creates the `prompts/` directory if it doesn't exist
-- Prompt files are automatically sanitized to use safe filenames (alphanumeric characters, hyphens, and underscores only)
 - File changes are monitored in real-time and cache is updated automatically
 - Prompts directory can be customized via the `PROMPTS_FOLDER_PATH` environment variable
 - Prompts are discovered recursively from all subdirectories
+- Prompt names are derived from file paths relative to the prompts directory
 
 ## GitHub Import
 

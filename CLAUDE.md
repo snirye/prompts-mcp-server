@@ -14,14 +14,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-This is an MCP (Model Context Protocol) server written in TypeScript that manages prompt templates stored as markdown files with YAML frontmatter metadata.
+This is an MCP (Model Context Protocol) server written in TypeScript that serves prompt templates stored as markdown files with YAML frontmatter metadata. The server operates in **read-only mode**, serving prompts via the MCP prompts protocol.
 
 ### Core Components
 
 **Main Server (`src/index.ts`)**
 - Entry point that orchestrates all components
 - Handles MCP server initialization and graceful shutdown
-- Registers tool handlers and connects to stdio transport
+- Registers prompts protocol handlers and connects to stdio transport
 - Minimal orchestration layer that delegates to specialized modules
 
 **Type Definitions (`src/types.ts`)**
@@ -36,9 +36,9 @@ This is an MCP (Model Context Protocol) server written in TypeScript that manage
 - Provides methods for cache access and management
 
 **File Operations (`src/fileOperations.ts`)**
-- `PromptFileOperations` class handles all file I/O
-- Read operations for prompts
-- Filename sanitization and directory management
+- `PromptFileOperations` class handles file read operations
+- Recursive search for prompt files across subdirectories
+- Filename resolution and directory management
 - Integrates with cache for optimal performance
 
 **MCP Prompts (`src/prompts.ts`)**
@@ -54,6 +54,7 @@ index.ts (main)
 ├── cache.ts (PromptCache)
 ├── fileOperations.ts (PromptFileOperations)
 │   └── cache.ts (dependency)
+├── githubSync.ts (GitHubSync)
 ├── prompts.ts (PromptHandlers)
 │   └── fileOperations.ts (dependency)
 └── types.ts (shared interfaces)
@@ -61,10 +62,10 @@ index.ts (main)
 
 ### Data Flow
 
-1. **Startup**: Main orchestrates cache initialization and file watcher setup
+1. **Startup**: Main orchestrates GitHub sync (if configured), cache initialization, and file watcher setup
 2. **File Changes**: PromptCache detects changes and updates cache automatically  
-3. **MCP Requests**: PromptHandlers delegates to PromptFileOperations which uses cached data
-4. **File Operations**: PromptFileOperations reads from filesystem, cache provides fast access
+3. **MCP Prompts Requests**: PromptHandlers (list/get) delegates to PromptFileOperations which uses cached data
+4. **File Operations**: PromptFileOperations reads from filesystem, cache provides fast metadata access
 
 ### Testing Strategy
 
@@ -72,10 +73,11 @@ Modular design enables easy unit testing:
 - Each class can be tested in isolation with dependency injection
 - Cache operations can be tested without file I/O
 - File operations can be tested with mock cache
-- Tool handlers can be tested with mock file operations
+- Prompt handlers can be tested with mock file operations
 
 ## Key Implementation Details
 
+- **Read-Only Server**: Serves prompts via MCP prompts protocol (list/get), no write operations
 - **Modular Architecture**: Clean separation of concerns across focused modules
 - **TypeScript**: Full type safety with centralized type definitions
 - **Build Process**: TypeScript compiles to `dist/` directory, source in `src/`
@@ -91,8 +93,9 @@ Modular design enables easy unit testing:
 
 - **`types.ts`**: Shared interfaces and type definitions
 - **`cache.ts`**: In-memory caching with file watching (PromptCache class)
-- **`fileOperations.ts`**: File I/O operations (PromptFileOperations class)  
+- **`fileOperations.ts`**: File read operations (PromptFileOperations class)  
 - **`prompts.ts`**: MCP prompts protocol handlers (PromptHandlers class)
+- **`githubSync.ts`**: GitHub repository synchronization (GitHubSync class)
 - **`index.ts`**: Main orchestration and server setup
 
 Each module is independently testable and has a single responsibility.
@@ -147,7 +150,7 @@ prompts-mcp/
 ├── src/                    # TypeScript source code
 │   ├── types.ts           # Type definitions
 │   ├── cache.ts           # Caching system
-│   ├── fileOperations.ts  # File I/O operations
+│   ├── fileOperations.ts  # File read operations
 │   ├── prompts.ts         # MCP prompts protocol handlers
 │   ├── githubSync.ts      # GitHub repository synchronization
 │   └── index.ts           # Main server entry point
